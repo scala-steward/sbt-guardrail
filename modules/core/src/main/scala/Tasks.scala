@@ -89,8 +89,4 @@ object Tasks {
       paths.map(_.toFile).toSet
     } finally Thread.currentThread().setContextClassLoader(oldClassLoader)
   }
-
-  def watchSources(tasks: List[Types.Args]): Seq[WatchSource] = {
-    tasks.flatMap(_._2.specPath.map(new File(_)).map(WatchSource(_))).toSeq
-  }
 }

@@ -1,0 +1,10 @@
+> clean
+$ absent target/scala-2.12/src_managed/main/guardrail/swagger/definitions/Order.scala
+> Compile / guardrail
+$ exists target/scala-2.12/src_managed/main/guardrail/swagger/definitions/Order.scala
+$ copy-file target/scala-2.12/src_managed/main/guardrail/swagger/definitions/Order.scala created
+> Compile / scalafmt
+$ newer target/scala-2.12/src_managed/main/guardrail/swagger/definitions/Order.scala created
+$ copy-file target/scala-2.12/src_managed/main/guardrail/swagger/definitions/Order.scala formatted
+> Compile / guardrail
+-$ newer target/scala-2.12/src_managed/main/guardrail/swagger/definitions/Order.scala formatted

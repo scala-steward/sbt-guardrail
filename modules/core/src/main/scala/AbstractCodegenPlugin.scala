@@ -3,6 +3,7 @@ package sbt
 
 import _root_.sbt.{Keys => SbtKeys, Types => _, _}
 import _root_.sbt.plugins.JvmPlugin
+import _root_.sbt.nio.{Keys => SbtNioKeys}
 import dev.guardrail.runner.GuardrailRunner
 import dev.guardrail.terms.protocol.PropertyRequirement
 import dev.guardrail.{
@@ -187,36 +188,33 @@ trait AbstractGuardrailPlugin { self: AutoPlugin =>
     lazy val GuardrailHelpers = _root_.dev.guardrail.sbt.GuardrailHelpers
   }
 
-  private def cachedGuardrailTask(projectName: String, scope: String, scalaBinaryVersion: String)(kind: String, streams: _root_.sbt.Keys.TaskStreams)(tasks: List[(String, Args)], sources: Seq[java.io.File]) = {
-    val inputFiles = tasks.flatMap(_._2.specPath).map(file(_)).toSet
-    val cacheDir = streams.cacheDirectory / "guardrail" / scalaBinaryVersion / kind
-
-    val cachedFn = _root_.sbt.util.FileFunction
-      .cached(cacheDir, inStyle = FilesInfo.hash, outStyle = FilesInfo.hash) {
-        _ =>
-          GuardrailAnalysis(
-            BuildInfo.version,
-            Tasks.guardrailTask(runner.guardrailRunner)(tasks, sources.head)
-          ).products
-      }
-
-    cachedFn(inputFiles).toSeq
-  }
-
-  def scopedSettings(name: String, scope: Configuration) = {
+  def scopedSettings(scope: Configuration): SettingsDefinition = {
     import _root_.sbt.Keys.{resourceDirectory, sourceDirectory, unmanagedResourceDirectories, unmanagedSourceDirectories}
     Seq(
       scope / unmanagedSourceDirectories += (scope / sourceDirectory).value / "openapi",
       scope / unmanagedResourceDirectories += (scope / resourceDirectory).value / "openapi",
       scope / Keys.guardrailDiscoveredOpenApiFiles := GuardrailHelpers.discoverOpenApiFiles((scope / sourceDirectory).value / "openapi"),
       scope / Keys.guardrailTasks := List.empty,
-      scope / Keys.guardrail := cachedGuardrailTask(SbtKeys.name.value, scope.name, SbtKeys.scalaBinaryVersion.value)(name, _root_.sbt.Keys.streams.value)((scope / Keys.guardrailTasks).value, (scope / SbtKeys.managedSourceDirectories).value),
+
+      scope / Keys.guardrail / SbtNioKeys.fileInputs := (scope / Keys.guardrailTasks).value.flatMap(_._2.specPath).map( p => Glob(file(p).getAbsoluteFile)),
+      scope / Keys.guardrail / SbtKeys.sourceManaged := (scope / SbtKeys.sourceManaged).value / "guardrail",
+      scope / Keys.guardrail := {
+        val tasks = (scope / Keys.guardrailTasks).value
+        val csf = (scope / Keys.guardrail / SbtKeys.streams).value.cacheStoreFactory
+          .sub(SbtKeys.scalaBinaryVersion.value)
+          .sub(BuildInfo.version)
+          .sub(Hash.toHex(Hash(tasks.toString)))
+        val output = (scope / Keys.guardrail / SbtKeys.sourceManaged).value
+        val cached = FileFunction.cached(csf, inStyle = FileInfo.hash, outStyle = FileInfo.exists) { (_, _) =>
+          Tasks.guardrailTask(runner.guardrailRunner)(tasks, output)
+        }
+        cached((scope / Keys.guardrail / SbtNioKeys.allInputFiles).value.map(_.toFile).toSet).toSeq
+      },
       scope / SbtKeys.sourceGenerators += (scope / Keys.guardrail).taskValue,
-      scope / SbtKeys.watchSources ++= Tasks.watchSources((scope / Keys.guardrailTasks).value),
     )
   }
 
   override lazy val projectSettings = {
-    scopedSettings("compile", Compile) ++ scopedSettings("test", Test)
+    scopedSettings(Compile) ++ scopedSettings(Test)
   }
 }
