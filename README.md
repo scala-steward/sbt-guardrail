@@ -48,3 +48,7 @@ Compile / guardrailTasks := (Compile / guardrailDiscoveredOpenApiFiles).value.fl
   )
 }
 ```
+Formatting generated sources with scalafmt:
+```
+Compile / scalafmt / unmanagedSources ++= (Compile / guardrail).value
+```
