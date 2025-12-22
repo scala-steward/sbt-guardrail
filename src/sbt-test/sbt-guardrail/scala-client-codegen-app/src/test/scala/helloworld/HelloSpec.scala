@@ -2,6 +2,8 @@
 package helloworld
 
 import org.scalatest._
+import org.scalatest.flatspec._
+import org.scalatest.matchers._
 import cats.implicits._
 import com.example.petstore.client.user.GetUserByNameResponse
 import com.example.tests.petstore.client.user.{ GetUserByNameResponse => MustExist }
@@ -9,8 +11,8 @@ import org.scalatest.concurrent.ScalaFutures
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class HelloSpec extends FlatSpec
-  with Matchers
+class HelloSpec extends AnyFlatSpec
+  with should.Matchers
   with ScalaFutures {
 
   private val username = "billg"

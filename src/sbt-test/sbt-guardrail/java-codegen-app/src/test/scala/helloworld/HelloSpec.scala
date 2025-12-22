@@ -5,10 +5,12 @@ import java.util.concurrent.TimeUnit
 
 import com.example.clients.petstore.user.LogoutUserResponse
 import org.scalatest._
+import org.scalatest.flatspec._
+import org.scalatest.matchers._
 import org.scalatest.concurrent.ScalaFutures
 
-class HelloSpec extends FlatSpec
-  with Matchers
+class HelloSpec extends AnyFlatSpec
+  with should.Matchers
   with ScalaFutures {
 
   "UserClient" should "pass sanity check" in {
